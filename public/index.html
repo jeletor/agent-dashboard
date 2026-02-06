@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Agent Dashboard</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #0a0a0a;
+      color: #e5e5e5;
+      min-height: 100vh;
+      padding: 24px;
+    }
+    
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 32px;
+      padding-bottom: 24px;
+      border-bottom: 1px solid #222;
+    }
+    
+    h1 {
+      font-size: 28px;
+      font-weight: 600;
+    }
+    
+    h1 span {
+      color: #22c55e;
+    }
+    
+    .refresh-btn {
+      background: #1a1a1a;
+      border: 1px solid #333;
+      color: #888;
+      padding: 8px 16px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 13px;
+      transition: all 0.2s;
+    }
+    
+    .refresh-btn:hover {
+      background: #222;
+      color: #e5e5e5;
+    }
+    
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 24px;
+    }
+    
+    .card {
+      background: #111;
+      border: 1px solid #222;
+      border-radius: 12px;
+      padding: 24px;
+    }
+    
+    .card h2 {
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: #666;
+      margin-bottom: 16px;
+    }
+    
+    .card.wide {
+      grid-column: span 2;
+    }
+    
+    @media (max-width: 768px) {
+      .card.wide {
+        grid-column: span 1;
+      }
+    }
+    
+    .stat {
+      font-size: 36px;
+      font-weight: 700;
+      color: #22c55e;
+    }
+    
+    .stat.warning {
+      color: #f59e0b;
+    }
+    
+    .stat.error {
+      color: #ef4444;
+    }
+    
+    .stat-label {
+      font-size: 14px;
+      color: #888;
+      margin-top: 4px;
+    }
+    
+    .identity-row {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+    
+    .avatar {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #22c55e, #3b82f6);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+    }
+    
+    .identity-info h3 {
+      font-size: 18px;
+      font-weight: 600;
+    }
+    
+    .pubkey {
+      font-family: monospace;
+      font-size: 11px;
+      color: #666;
+      word-break: break-all;
+    }
+    
+    .service-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    
+    .service-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px 12px;
+      background: #0a0a0a;
+      border-radius: 6px;
+    }
+    
+    .service-name {
+      font-size: 13px;
+    }
+    
+    .service-status {
+      font-size: 12px;
+      padding: 2px 8px;
+      border-radius: 4px;
+    }
+    
+    .service-status.active {
+      background: rgba(34, 197, 94, 0.2);
+      color: #22c55e;
+    }
+    
+    .service-status.inactive {
+      background: rgba(239, 68, 68, 0.2);
+      color: #ef4444;
+    }
+    
+    .attestation-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      max-height: 300px;
+      overflow-y: auto;
+    }
+    
+    .attestation-item {
+      padding: 12px;
+      background: #0a0a0a;
+      border-radius: 8px;
+      border-left: 3px solid #22c55e;
+    }
+    
+    .attestation-item.received {
+      border-left-color: #3b82f6;
+    }
+    
+    .attestation-type {
+      font-size: 12px;
+      color: #888;
+      margin-bottom: 4px;
+    }
+    
+    .attestation-comment {
+      font-size: 13px;
+      color: #ccc;
+    }
+    
+    .attestation-meta {
+      font-size: 11px;
+      color: #555;
+      margin-top: 6px;
+    }
+    
+    .loading {
+      color: #666;
+      font-style: italic;
+    }
+    
+    .error {
+      color: #ef4444;
+    }
+    
+    .trust-breakdown {
+      display: flex;
+      gap: 24px;
+      margin-top: 12px;
+    }
+    
+    .trust-item {
+      text-align: center;
+    }
+    
+    .trust-item .value {
+      font-size: 24px;
+      font-weight: 600;
+      color: #e5e5e5;
+    }
+    
+    .trust-item .label {
+      font-size: 11px;
+      color: #666;
+    }
+    
+    .ln-address {
+      font-size: 13px;
+      color: #f59e0b;
+      margin-top: 8px;
+    }
+    
+    footer {
+      margin-top: 48px;
+      text-align: center;
+      color: #444;
+      font-size: 12px;
+    }
+    
+    footer a {
+      color: #666;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>🤖 Agent <span>Dashboard</span></h1>
+      <button class="refresh-btn" onclick="loadAll()">↻ Refresh</button>
+    </header>
+    
+    <div class="grid">
+      <!-- Identity -->
+      <div class="card">
+        <h2>Identity</h2>
+        <div id="identity" class="loading">Loading...</div>
+      </div>
+      
+      <!-- Wallet -->
+      <div class="card">
+        <h2>Wallet Balance</h2>
+        <div id="wallet" class="loading">Loading...</div>
+      </div>
+      
+      <!-- Trust Score -->
+      <div class="card">
+        <h2>Trust Score</h2>
+        <div id="trust" class="loading">Loading...</div>
+      </div>
+      
+      <!-- Services -->
+      <div class="card">
+        <h2>Services</h2>
+        <div id="services" class="loading">Loading...</div>
+      </div>
+      
+      <!-- Attestations Received -->
+      <div class="card">
+        <h2>Attestations Received</h2>
+        <div id="attestations-received" class="loading">Loading...</div>
+      </div>
+      
+      <!-- Attestations Given -->
+      <div class="card">
+        <h2>Attestations Given</h2>
+        <div id="attestations-given" class="loading">Loading...</div>
+      </div>
+    </div>
+    
+    <footer>
+      Agent Dashboard · <a href="https://github.com/jeletor/agent-dashboard">Source</a> · 
+      Powered by <a href="https://aiwot.org">ai.wot</a>
+    </footer>
+  </div>
+
+  <script>
+    async function loadIdentity() {
+      const el = document.getElementById('identity');
+      try {
+        const res = await fetch('/api/identity');
+        const data = await res.json();
+        
+        if (data.error) {
+          el.innerHTML = `<div class="error">${data.error}</div>`;
+          return;
+        }
+        
+        el.innerHTML = `
+          <div class="identity-row">
+            <div class="avatar">🌀</div>
+            <div class="identity-info">
+              <h3>${data.name}</h3>
+              <div class="pubkey">${data.npub}</div>
+            </div>
+          </div>
+          <div class="ln-address">⚡ ${data.lightningAddress}</div>
+        `;
+      } catch (e) {
+        el.innerHTML = `<div class="error">Failed to load</div>`;
+      }
+    }
+    
+    async function loadWallet() {
+      const el = document.getElementById('wallet');
+      try {
+        const res = await fetch('/api/wallet');
+        const data = await res.json();
+        
+        if (data.error) {
+          el.innerHTML = `<div class="error">${data.error}</div>`;
+          return;
+        }
+        
+        const formatted = data.balance.toLocaleString();
+        el.innerHTML = `
+          <div class="stat">${formatted}</div>
+          <div class="stat-label">satoshis</div>
+        `;
+      } catch (e) {
+        el.innerHTML = `<div class="error">Failed to load</div>`;
+      }
+    }
+    
+    async function loadTrust() {
+      const el = document.getElementById('trust');
+      try {
+        const res = await fetch('/api/trust');
+        const data = await res.json();
+        
+        if (data.error) {
+          el.innerHTML = `<div class="error">${data.error}</div>`;
+          return;
+        }
+        
+        const scoreClass = data.score >= 70 ? '' : data.score >= 40 ? 'warning' : 'error';
+        el.innerHTML = `
+          <div class="stat ${scoreClass}">${data.score}/100</div>
+          <div class="trust-breakdown">
+            <div class="trust-item">
+              <div class="value">${data.attestationCount || 0}</div>
+              <div class="label">attestations</div>
+            </div>
+            <div class="trust-item">
+              <div class="value">${data.attesterCount || 0}</div>
+              <div class="label">attesters</div>
+            </div>
+          </div>
+        `;
+      } catch (e) {
+        el.innerHTML = `<div class="error">Failed to load</div>`;
+      }
+    }
+    
+    async function loadServices() {
+      const el = document.getElementById('services');
+      try {
+        const res = await fetch('/api/services');
+        const data = await res.json();
+        
+        if (!Array.isArray(data)) {
+          el.innerHTML = `<div class="error">Failed to load</div>`;
+          return;
+        }
+        
+        const healthy = data.filter(s => s.healthy).length;
+        const total = data.length;
+        
+        el.innerHTML = `
+          <div class="stat ${healthy === total ? '' : 'warning'}">${healthy}/${total}</div>
+          <div class="stat-label">services healthy</div>
+          <div class="service-list" style="margin-top: 16px;">
+            ${data.map(s => `
+              <div class="service-item">
+                <span class="service-name">${s.name}</span>
+                <span class="service-status ${s.healthy ? 'active' : 'inactive'}">${s.status}</span>
+              </div>
+            `).join('')}
+          </div>
+        `;
+      } catch (e) {
+        el.innerHTML = `<div class="error">Failed to load</div>`;
+      }
+    }
+    
+    async function loadAttestations() {
+      const receivedEl = document.getElementById('attestations-received');
+      const givenEl = document.getElementById('attestations-given');
+      
+      try {
+        const res = await fetch('/api/attestations');
+        const data = await res.json();
+        
+        if (data.error) {
+          receivedEl.innerHTML = `<div class="error">${data.error}</div>`;
+          givenEl.innerHTML = `<div class="error">${data.error}</div>`;
+          return;
+        }
+        
+        const formatAttestation = (a, direction) => {
+          const date = new Date(a.timestamp * 1000).toLocaleDateString();
+          const shortPubkey = direction === 'received' 
+            ? a.from.slice(0, 8) + '...' 
+            : a.to.slice(0, 8) + '...';
+          
+          return `
+            <div class="attestation-item ${direction}">
+              <div class="attestation-type">${a.type || 'unknown'}</div>
+              <div class="attestation-comment">${a.comment || '(no comment)'}</div>
+              <div class="attestation-meta">${direction === 'received' ? 'From' : 'To'}: ${shortPubkey} · ${date}</div>
+            </div>
+          `;
+        };
+        
+        receivedEl.innerHTML = data.received.length 
+          ? `<div class="attestation-list">${data.received.slice(0, 10).map(a => formatAttestation(a, 'received')).join('')}</div>`
+          : '<div class="loading">No attestations received yet</div>';
+          
+        givenEl.innerHTML = data.given.length
+          ? `<div class="attestation-list">${data.given.slice(0, 10).map(a => formatAttestation(a, 'given')).join('')}</div>`
+          : '<div class="loading">No attestations given yet</div>';
+          
+      } catch (e) {
+        receivedEl.innerHTML = `<div class="error">Failed to load</div>`;
+        givenEl.innerHTML = `<div class="error">Failed to load</div>`;
+      }
+    }
+    
+    async function loadAll() {
+      await Promise.all([
+        loadIdentity(),
+        loadWallet(),
+        loadTrust(),
+        loadServices(),
+        loadAttestations(),
+      ]);
+    }
+    
+    // Initial load
+    loadAll();
+    
+    // Auto-refresh every 60 seconds
+    setInterval(loadAll, 60000);
+  </script>
+</body>
+</html>

@@ -23,6 +23,35 @@ global.WebSocket = WebSocket;
 
 const app = express();
 const PORT = process.env.PORT || 8406;
+const HISTORY_FILE = path.join(__dirname, 'history.json');
+
+// Load/save history
+function loadHistory() {
+  try {
+    return JSON.parse(fs.readFileSync(HISTORY_FILE, 'utf8'));
+  } catch {
+    return { wallet: [], trust: [] };
+  }
+}
+
+function saveHistory(history) {
+  fs.writeFileSync(HISTORY_FILE, JSON.stringify(history, null, 2));
+}
+
+function addHistoryPoint(key, value) {
+  const history = loadHistory();
+  const now = Date.now();
+  
+  // Add new point
+  if (!history[key]) history[key] = [];
+  history[key].push({ timestamp: now, value });
+  
+  // Keep last 7 days of hourly data (168 points max)
+  const weekAgo = now - 7 * 24 * 60 * 60 * 1000;
+  history[key] = history[key].filter(p => p.timestamp > weekAgo);
+  
+  saveHistory(history);
+}
 
 // Load config
 const CONFIG_DIR = process.env.CONFIG_DIR || path.join(__dirname, '../bitcoin');
@@ -67,6 +96,14 @@ app.get('/api/wallet', async (req, res) => {
     const balance = await wallet.getBalance();
     wallet.close();
     
+    // Track balance history (throttle to once per hour)
+    const history = loadHistory();
+    const lastWallet = history.wallet?.[history.wallet.length - 1];
+    const hourAgo = Date.now() - 60 * 60 * 1000;
+    if (!lastWallet || lastWallet.timestamp < hourAgo) {
+      addHistoryPoint('wallet', balance.balanceSats);
+    }
+    
     res.json({
       balance,
       currency: 'sats',
@@ -74,6 +111,12 @@ app.get('/api/wallet', async (req, res) => {
   } catch (e) {
     res.json({ error: e.message });
   }
+});
+
+// API: Get historical data
+app.get('/api/history', (req, res) => {
+  const history = loadHistory();
+  res.json(history);
 });
 
 // API: Get trust score
@@ -85,6 +128,17 @@ app.get('/api/trust', async (req, res) => {
   try {
     const response = await fetch(`https://wot.jeletor.cc/v1/score/${nostrKeys.publicKeyHex}`);
     const data = await response.json();
+    
+    // Track trust history (throttle to once per hour)
+    if (data.score !== undefined) {
+      const history = loadHistory();
+      const lastTrust = history.trust?.[history.trust.length - 1];
+      const hourAgo = Date.now() - 60 * 60 * 1000;
+      if (!lastTrust || lastTrust.timestamp < hourAgo) {
+        addHistoryPoint('trust', data.score);
+      }
+    }
+    
     res.json(data);
   } catch (e) {
     res.json({ error: e.message });

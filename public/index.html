@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Agent Dashboard</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     * {
       margin: 0;
@@ -284,6 +285,19 @@
         <div id="trust" class="loading">Loading...</div>
       </div>
       
+      <!-- History Chart -->
+      <div class="card wide">
+        <h2>7-Day History</h2>
+        <div style="display: flex; gap: 24px; flex-wrap: wrap;">
+          <div style="flex: 1; min-width: 280px;">
+            <canvas id="walletChart" height="150"></canvas>
+          </div>
+          <div style="flex: 1; min-width: 280px;">
+            <canvas id="trustChart" height="150"></canvas>
+          </div>
+        </div>
+      </div>
+      
       <!-- Services -->
       <div class="card">
         <h2>Services</h2>
@@ -461,6 +475,84 @@
       }
     }
     
+    let walletChart = null;
+    let trustChart = null;
+    
+    async function loadHistory() {
+      try {
+        const res = await fetch('/api/history');
+        const data = await res.json();
+        
+        const chartConfig = {
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: { display: false },
+            },
+            scales: {
+              x: {
+                ticks: { color: '#666', maxTicksLimit: 6 },
+                grid: { color: '#222' },
+              },
+              y: {
+                ticks: { color: '#666' },
+                grid: { color: '#222' },
+              },
+            },
+          },
+        };
+        
+        // Wallet chart
+        const walletCtx = document.getElementById('walletChart');
+        if (data.wallet && data.wallet.length > 0) {
+          const walletData = {
+            labels: data.wallet.map(p => new Date(p.timestamp).toLocaleDateString()),
+            datasets: [{
+              label: 'Balance (sats)',
+              data: data.wallet.map(p => p.value),
+              borderColor: '#f59e0b',
+              backgroundColor: 'rgba(245, 158, 11, 0.1)',
+              fill: true,
+              tension: 0.3,
+            }],
+          };
+          
+          if (walletChart) walletChart.destroy();
+          walletChart = new Chart(walletCtx, {
+            type: 'line',
+            data: walletData,
+            ...chartConfig,
+          });
+        }
+        
+        // Trust chart
+        const trustCtx = document.getElementById('trustChart');
+        if (data.trust && data.trust.length > 0) {
+          const trustData = {
+            labels: data.trust.map(p => new Date(p.timestamp).toLocaleDateString()),
+            datasets: [{
+              label: 'Trust Score',
+              data: data.trust.map(p => p.value),
+              borderColor: '#22c55e',
+              backgroundColor: 'rgba(34, 197, 94, 0.1)',
+              fill: true,
+              tension: 0.3,
+            }],
+          };
+          
+          if (trustChart) trustChart.destroy();
+          trustChart = new Chart(trustCtx, {
+            type: 'line',
+            data: trustData,
+            ...chartConfig,
+          });
+        }
+      } catch (e) {
+        console.log('Failed to load history:', e);
+      }
+    }
+    
     async function loadAll() {
       await Promise.all([
         loadIdentity(),
@@ -468,6 +560,7 @@
         loadTrust(),
         loadServices(),
         loadAttestations(),
+        loadHistory(),
       ]);
     }
     
